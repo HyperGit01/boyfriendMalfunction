@@ -168,6 +168,8 @@ function resetRepair() {
 }
 
 function startGame() {
+    ArcadeSound.start();
+
     resetBoss();
     resetRepair();
 
@@ -326,6 +328,8 @@ function beginRepair() {
 }
 
 function finishRepair() {
+    ArcadeSound.unlock();
+
     progressFill.style.width = "100%";
     progressPercent.textContent = "100%";
 
@@ -342,6 +346,8 @@ function finishRepair() {
    ========================================= */
 
 function openApology() {
+    ArcadeSound.letter();
+
     showScreen("apology");
 }
 
@@ -390,6 +396,7 @@ function celebrateHearts() {
         heart.style.setProperty("--heart-duration", duration + "s");
         heart.style.setProperty("--rotation", rotation + "deg");
         heart.style.setProperty("--heart-size", size + "px");
+
         heart.style.setProperty(
             "--heart-color",
             colors[Math.floor(Math.random() * colors.length)]
@@ -401,7 +408,7 @@ function celebrateHearts() {
             heart.remove();
         }, (duration + 0.3) * 1000);
 
-        // No timer cleanup is necessary: each heart removes itself.
+        // Each heart removes itself after its animation.
         void removalTimer;
     }
 }
@@ -450,6 +457,8 @@ function showEnding(type) {
     endingTitle.textContent = selectedEnding.title;
     endingMessage.textContent = selectedEnding.message;
 
+    ArcadeSound.celebrate();
+
     showScreen("ending");
     celebrateHearts();
 }
@@ -473,6 +482,9 @@ document.addEventListener("click", (event) => {
     }
 
     const action = button.dataset.action;
+
+    // Short selection sound for game-action buttons.
+    ArcadeSound.click();
 
     switch (action) {
         case "start":
@@ -530,3 +542,241 @@ document.addEventListener("click", (event) => {
    ========================================= */
 
 showScreen("title");
+
+
+/* ==========================================
+   RETRO 8-BIT SOUND ENGINE
+   ========================================== */
+
+const ArcadeSound = (() => {
+    let audioContext = null;
+    let masterVolume = 0.16;
+    let muted = false;
+
+    function initialize() {
+        const AudioContextClass =
+            window.AudioContext || window.webkitAudioContext;
+
+        if (!AudioContextClass) {
+            return false;
+        }
+
+        if (!audioContext) {
+            audioContext = new AudioContextClass();
+        }
+
+        if (audioContext.state === "suspended") {
+            audioContext.resume();
+        }
+
+        return true;
+    }
+
+    function tone(frequency, duration, options = {}) {
+        if (muted || !initialize()) {
+            return;
+        }
+
+        const {
+            type = "square",
+            volume = 0.12,
+            slideTo = null,
+            delay = 0
+        } = options;
+
+        const startTime = audioContext.currentTime + delay;
+
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(
+            frequency,
+            startTime
+        );
+
+        if (slideTo !== null) {
+            oscillator.frequency.exponentialRampToValueAtTime(
+                Math.max(1, slideTo),
+                startTime + duration
+            );
+        }
+
+        gain.gain.setValueAtTime(0.0001, startTime);
+
+        gain.gain.exponentialRampToValueAtTime(
+            Math.max(0.0002, volume * masterVolume),
+            startTime + 0.015
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+            0.0001,
+            startTime + duration
+        );
+
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+
+        oscillator.start(startTime);
+        oscillator.stop(startTime + duration + 0.02);
+    }
+
+    function playSequence(notes, gap = 0.12) {
+        notes.forEach((note, index) => {
+            tone(note.frequency, note.duration || 0.12, {
+                type: note.type || "square",
+                volume: note.volume ?? 0.12,
+                slideTo: note.slideTo ?? null,
+                delay: index * gap
+            });
+        });
+    }
+
+    // Button-selection beep.
+    function click() {
+        tone(620, 0.055, {
+            volume: 0.08,
+            type: "square",
+            slideTo: 760
+        });
+    }
+
+    // Start or restart jingle.
+    function start() {
+        playSequence([
+            { frequency: 392, duration: 0.12 },
+            { frequency: 523, duration: 0.12 },
+            { frequency: 659, duration: 0.12 },
+            { frequency: 784, duration: 0.22 }
+        ], 0.13);
+    }
+
+    // Repair-completion power-up.
+    function unlock() {
+        playSequence([
+            { frequency: 440, duration: 0.10 },
+            { frequency: 554, duration: 0.10 },
+            { frequency: 659, duration: 0.10 },
+            { frequency: 880, duration: 0.25 }
+        ], 0.10);
+    }
+
+    // Gentle apology-letter chime.
+    function letter() {
+        tone(523, 0.35, {
+            type: "sine",
+            volume: 0.10
+        });
+
+        tone(659, 0.45, {
+            type: "sine",
+            volume: 0.07,
+            delay: 0.12
+        });
+
+        tone(784, 0.55, {
+            type: "sine",
+            volume: 0.05,
+            delay: 0.24
+        });
+    }
+
+    // Ending melody.
+    function celebrate() {
+        playSequence([
+            { frequency: 523, duration: 0.14 },
+            { frequency: 659, duration: 0.14 },
+            { frequency: 784, duration: 0.14 },
+            { frequency: 1047, duration: 0.30 }
+        ], 0.15);
+    }
+
+    function toggleMute() {
+        muted = !muted;
+        return muted;
+    }
+
+    function isMuted() {
+        return muted;
+    }
+
+    return {
+        initialize,
+        tone,
+        click,
+        start,
+        unlock,
+        letter,
+        celebrate,
+        toggleMute,
+        isMuted
+    };
+})();
+
+
+/* ==========================================
+   SOUND TOGGLE BUTTON
+   ========================================== */
+
+function addSoundToggle() {
+    if (document.getElementById("soundToggle")) {
+        return;
+    }
+
+    const button = document.createElement("button");
+
+    button.id = "soundToggle";
+    button.type = "button";
+    button.textContent = "♫ SOUND ON";
+
+    button.setAttribute(
+        "aria-label",
+        "Mute sound effects"
+    );
+
+    button.style.cssText = `
+        position: fixed;
+        top: max(12px, env(safe-area-inset-top));
+        right: max(12px, env(safe-area-inset-right));
+        z-index: 9999;
+        padding: 10px 12px;
+        border: 2px solid #64faff;
+        background: #11152f;
+        color: #64faff;
+        font-family: "VT323", monospace;
+        font-size: 18px;
+        cursor: pointer;
+        box-shadow: 0 0 10px rgba(100, 250, 255, 0.25);
+    `;
+
+    button.addEventListener("click", () => {
+        const muted = ArcadeSound.toggleMute();
+
+        button.textContent = muted
+            ? "♫ SOUND OFF"
+            : "♫ SOUND ON";
+
+        button.setAttribute(
+            "aria-label",
+            muted
+                ? "Enable sound effects"
+                : "Mute sound effects"
+        );
+
+        if (!muted) {
+            ArcadeSound.initialize();
+            ArcadeSound.click();
+        }
+    });
+
+    document.body.appendChild(button);
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener(
+        "DOMContentLoaded",
+        addSoundToggle
+    );
+} else {
+    addSoundToggle();
+}
