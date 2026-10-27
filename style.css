@@ -1189,3 +1189,325 @@ button {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* =========================================
+   ANIMATION UPGRADE
+   ========================================= */
+
+/* 1. Arcade title glow */
+
+.game-title span {
+    animation: cyanGlow 2.5s ease-in-out infinite alternate;
+}
+
+.game-title strong {
+    animation: pinkGlow 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes cyanGlow {
+    from {
+        text-shadow: 0 0 5px rgba(67, 232, 255, 0.25);
+    }
+
+    to {
+        text-shadow:
+            0 0 8px rgba(67, 232, 255, 0.65),
+            0 0 20px rgba(67, 232, 255, 0.3);
+    }
+}
+
+@keyframes pinkGlow {
+    from {
+        text-shadow: 2px 2px 0 #80234f;
+    }
+
+    to {
+        text-shadow:
+            3px 3px 0 #80234f,
+            0 0 16px rgba(255, 79, 163, 0.75);
+    }
+}
+
+
+/* 2. Twinkling arcade stars */
+
+.title-decoration .pixel-star {
+    animation: starTwinkle 1.8s ease-in-out infinite alternate;
+}
+
+.title-decoration .pixel-star:last-child {
+    animation-delay: 0.8s;
+}
+
+@keyframes starTwinkle {
+    from {
+        opacity: 0.4;
+        transform: scale(0.8) rotate(0deg);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1.2) rotate(15deg);
+    }
+}
+
+
+/* 3. Floating boss character */
+
+.character-boy {
+    animation: characterBounce 2.2s ease-in-out infinite;
+    transform-origin: center bottom;
+}
+
+@keyframes characterBounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-7px);
+    }
+}
+
+
+/* 4. Dialogue box entrance */
+
+.dialogue-box {
+    animation: dialogueAppear 350ms ease-out;
+}
+
+@keyframes dialogueAppear {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* 5. Buttons feel like arcade controls */
+
+.btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.045);
+    box-shadow: 0 0 14px currentColor;
+    transform: translateY(-2px);
+}
+
+.btn:active:not(:disabled) {
+    transform: translateY(1px) scale(0.985);
+}
+
+
+/* 6. Animated health bar */
+
+.health-fill {
+    position: relative;
+    overflow: hidden;
+}
+
+.health-fill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+
+    background: linear-gradient(
+        110deg,
+        transparent 20%,
+        rgba(255, 255, 255, 0.45) 50%,
+        transparent 80%
+    );
+
+    transform: translateX(-100%);
+    animation: healthShimmer 2.8s linear infinite;
+}
+
+@keyframes healthShimmer {
+    to {
+        transform: translateX(100%);
+    }
+}
+
+
+/* 7. Terminal cursor */
+
+.terminal-status::after {
+    content: "_";
+    margin-left: 4px;
+    animation: cursorBlink 700ms steps(2, start) infinite;
+}
+
+@keyframes cursorBlink {
+    to {
+        visibility: hidden;
+    }
+}
+
+
+/* 8. System repair skill unlock */
+
+.unlock-card:not([hidden]) {
+    animation: unlockReveal 650ms cubic-bezier(.2, .8, .3, 1.3);
+}
+
+@keyframes unlockReveal {
+    0% {
+        opacity: 0;
+        transform: scale(0.88);
+        box-shadow: 0 0 0 rgba(255, 79, 163, 0);
+    }
+
+    65% {
+        opacity: 1;
+        transform: scale(1.025);
+        box-shadow: 0 0 24px rgba(255, 79, 163, 0.22);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+
+/* 9. Apology letter entrance */
+
+.letter {
+    animation: letterReveal 600ms ease-out;
+}
+
+@keyframes letterReveal {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+        filter: blur(2px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+    }
+}
+
+
+/* 10. Moonlight glow */
+
+.final-moon,
+.moon {
+    animation: moonGlow 3.5s ease-in-out infinite alternate;
+}
+
+@keyframes moonGlow {
+    from {
+        box-shadow:
+            0 0 12px rgba(255, 154, 203, 0.4),
+            0 0 24px rgba(255, 79, 163, 0.12);
+    }
+
+    to {
+        box-shadow:
+            0 0 20px rgba(255, 154, 203, 0.85),
+            0 0 45px rgba(255, 79, 163, 0.3);
+    }
+}
+
+
+/* 11. Celebration hearts */
+
+.celebration-heart {
+    position: fixed;
+    z-index: 999;
+    left: var(--start-x);
+    top: var(--start-y);
+
+    color: var(--heart-color);
+    font-size: var(--heart-size);
+    line-height: 1;
+
+    pointer-events: none;
+    user-select: none;
+
+    animation: heartCelebration var(--heart-duration) ease-out forwards;
+}
+
+@keyframes heartCelebration {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, 0) scale(0.3) rotate(0deg);
+    }
+
+    15% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        transform:
+            translate(
+                calc(-50% + var(--drift-x)),
+                var(--rise-y)
+            )
+            scale(1.15)
+            rotate(var(--rotation));
+    }
+}
+
+
+/* 12. Ending title reveal */
+
+#endingTitle {
+    animation: endingTitleReveal 500ms ease-out;
+}
+
+@keyframes endingTitleReveal {
+    from {
+        opacity: 0;
+        letter-spacing: 5px;
+        transform: scale(0.92);
+    }
+
+    to {
+        opacity: 1;
+        letter-spacing: normal;
+        transform: scale(1);
+    }
+}
+
+
+/* 13. Keep animations comfortable on small screens */
+
+@media (max-width: 380px) {
+    .game-title span,
+    .game-title strong {
+        animation-duration: 3.5s;
+    }
+
+    .celebration-heart {
+        font-size: 18px;
+    }
+}
+
+
+/* 14. Respect reduced-motion preferences */
+
+@media (prefers-reduced-motion: reduce) {
+    .game-title span,
+    .game-title strong,
+    .title-decoration .pixel-star,
+    .character-boy,
+    .health-fill::after,
+    .terminal-status::after,
+    .final-moon,
+    .moon {
+        animation: none !important;
+    }
+}
