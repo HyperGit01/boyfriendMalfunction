@@ -424,7 +424,7 @@ function showEnding(type) {
             label: "ENDING 01 UNLOCKED",
             title: "A NEW BEGINNING",
             message:
-                "Thank you for hearing me out, Bhumi. " +
+                "Thank you for hearing me out, Bhuma. " +
                 "I'll do my best to make my actions match my words."
         },
 
@@ -432,7 +432,7 @@ function showEnding(type) {
             label: "ENDING 02 UNLOCKED",
             title: "TAKE YOUR TIME",
             message:
-                "That's okay, Bhumi. You don't have to stop " +
+                "That's okay, Bhuma. You don't have to stop " +
                 "being upset just because I've apologised. " +
                 "Take the time you need. I'm sorry I hurt you."
         },
@@ -441,7 +441,7 @@ function showEnding(type) {
             label: "BONUS ENDING UNLOCKED",
             title: "+1 VIRTUAL HUG",
             message:
-                "Sending you the gentlest virtual hug, Bhumi. " +
+                "Sending you the gentlest virtual hug, Bhuma. " +
                 "Delivered with love by Akshit. No pressure—" +
                 "just a hug, if you want one. ♥"
         }
