@@ -1,9 +1,9 @@
+"use strict";
+
 /* =========================================
    OPERATION: SAVE BHUMI
-   Main game logic
+   Animated game engine
    ========================================= */
-
-"use strict";
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -18,10 +18,6 @@ const screens = {
 
 const levelIndicator = $("#levelIndicator");
 
-let currentScreen = "title";
-let repairTimer = null;
-let transitionLocked = false;
-
 const bossDialogue = $("#bossDialogue");
 const healthFill = $("#healthFill");
 const healthNumber = $("#healthNumber");
@@ -29,6 +25,7 @@ const healthNumber = $("#healthNumber");
 const progressFill = $("#progressFill");
 const progressPercent = $("#progressPercent");
 const repairStatus = $("#repairStatus");
+
 const unlockCard = $("#unlockCard");
 const repairContinue = $("#repairContinue");
 
@@ -37,6 +34,10 @@ const endingTitle = $("#endingTitle");
 const endingMessage = $("#endingMessage");
 
 const bossChoices = $("#bossScreen .choices");
+
+const reducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+).matches;
 
 const levelNames = {
     title: "LEVEL 00",
@@ -47,46 +48,87 @@ const levelNames = {
     ending: "GAME CLEAR"
 };
 
+let currentScreen = "title";
+let dialogueTimer = null;
+let repairTimers = [];
+let typing = false;
+let transitionLocked = false;
 
-/* -----------------------------------------
+
+/* =========================================
    SCREEN NAVIGATION
-   ----------------------------------------- */
+   ========================================= */
 
 function showScreen(screenName) {
     if (!screens[screenName]) {
-        console.error("Unknown screen:", screenName);
         return;
     }
 
-    // Stop any previous screen's animation.
-    clearTimeout(repairTimer);
-    repairTimer = null;
+    stopTyping();
+    clearRepairTimers();
 
-    // Display exactly one screen.
     Object.entries(screens).forEach(([name, element]) => {
-        const isActive = name === screenName;
+        const active = name === screenName;
 
-        element.hidden = !isActive;
-        element.classList.toggle("active", isActive);
+        element.hidden = !active;
+        element.classList.toggle("active", active);
     });
 
     currentScreen = screenName;
-
     levelIndicator.textContent = levelNames[screenName];
 
-    // Return to the top whenever a new stage opens.
     window.scrollTo({
         top: 0,
-        behavior: window.matchMedia(
-            "(prefers-reduced-motion: reduce)"
-        ).matches ? "auto" : "smooth"
+        behavior: reducedMotion ? "auto" : "smooth"
     });
 }
 
 
-/* -----------------------------------------
-   RESET THE GAME
-   ----------------------------------------- */
+/* =========================================
+   TYPEWRITER DIALOGUE
+   ========================================= */
+
+function stopTyping() {
+    if (dialogueTimer !== null) {
+        clearInterval(dialogueTimer);
+        dialogueTimer = null;
+    }
+
+    typing = false;
+}
+
+function typeText(element, message, speed = 22) {
+    stopTyping();
+
+    if (reducedMotion) {
+        element.textContent = message;
+        return;
+    }
+
+    typing = true;
+    element.textContent = "";
+
+    let index = 0;
+
+    dialogueTimer = setInterval(() => {
+        if (!element.isConnected) {
+            stopTyping();
+            return;
+        }
+
+        index += 1;
+        element.textContent = message.slice(0, index);
+
+        if (index >= message.length) {
+            stopTyping();
+        }
+    }, speed);
+}
+
+
+/* =========================================
+   RESET GAME
+   ========================================= */
 
 function resetBoss() {
     bossDialogue.textContent =
@@ -112,6 +154,8 @@ function resetBoss() {
 }
 
 function resetRepair() {
+    clearRepairTimers();
+
     progressFill.style.width = "0%";
     progressPercent.textContent = "0%";
 
@@ -119,6 +163,8 @@ function resetRepair() {
 
     unlockCard.hidden = true;
     repairContinue.hidden = true;
+
+    $("#terminalLines").innerHTML = "";
 }
 
 function startGame() {
@@ -126,31 +172,41 @@ function startGame() {
     resetRepair();
 
     showScreen("boss");
+
+    typeText(
+        bossDialogue,
+        "PLAYER 1 HAS ENTERED THE BATTLE. " +
+        "His communication system was unfortunately offline."
+    );
 }
 
 
-/* -----------------------------------------
+/* =========================================
    BOSS FIGHT
-   ----------------------------------------- */
+   ========================================= */
+
+function replaceBossChoices(html) {
+    bossChoices.innerHTML = html;
+}
 
 function chooseBossResponse(choice) {
     if (choice === "explain") {
-        bossDialogue.textContent =
+        typeText(
+            bossDialogue,
             'AKSHIT: "I genuinely fell asleep." ' +
             "SYSTEM: That explains what happened. " +
-            "It does not automatically erase how it felt.";
+            "It does not automatically erase how it felt."
+        );
 
         healthFill.style.width = "65%";
         healthNumber.textContent = "65 HP";
 
         replaceBossChoices(`
-            <button class="btn btn-pink"
-                    data-action="admit">
+            <button class="btn btn-pink" data-action="admit">
                 ACCEPT RESPONSIBILITY
             </button>
 
-            <button class="btn btn-purple"
-                    data-action="skipBoss">
+            <button class="btn btn-purple" data-action="skipBoss">
                 SKIP TO APOLOGY
             </button>
         `);
@@ -159,10 +215,12 @@ function chooseBossResponse(choice) {
     }
 
     if (choice === "admit") {
-        bossDialogue.textContent =
+        typeText(
+            bossDialogue,
             'AKSHIT: "I should have told you I was getting sleepy." ' +
             "SYSTEM: Accountability detected. " +
-            "Communication skill +1.";
+            "Communication skill +1."
+        );
 
         healthFill.style.width = "25%";
         healthNumber.textContent = "25 HP";
@@ -182,18 +240,25 @@ function chooseBossResponse(choice) {
     }
 }
 
-function replaceBossChoices(html) {
-    bossChoices.innerHTML = html;
+
+/* =========================================
+   SYSTEM REPAIR ANIMATION
+   ========================================= */
+
+function clearRepairTimers() {
+    repairTimers.forEach((timer) => {
+        clearTimeout(timer);
+        clearInterval(timer);
+    });
+
+    repairTimers = [];
 }
-
-
-/* -----------------------------------------
-   SYSTEM REPAIR
-   ----------------------------------------- */
 
 function beginRepair() {
     resetRepair();
     showScreen("repair");
+
+    const terminal = $("#terminalLines");
 
     const lines = [
         "> SCANNING COMMUNICATION SYSTEM...",
@@ -202,34 +267,28 @@ function beginRepair() {
         "> ACCOUNTABILITY MODULE: INSTALLED"
     ];
 
-    const terminal = $("#terminalLines");
-
-    // Reveal the diagnostic lines in sequence.
-    terminal.innerHTML = "";
-
-    const reducedMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
-    ).matches;
-
-    const lineDelay = reducedMotion ? 0 : 420;
+    const lineDelay = reducedMotion ? 0 : 500;
 
     lines.forEach((line, index) => {
         const paragraph = document.createElement("p");
+
         paragraph.textContent = line;
         paragraph.style.visibility = "hidden";
 
         terminal.appendChild(paragraph);
 
-        repairTimer = setTimeout(() => {
+        const timer = setTimeout(() => {
             if (currentScreen !== "repair") {
                 return;
             }
 
             paragraph.style.visibility = "visible";
         }, lineDelay * (index + 1));
+
+        repairTimers.push(timer);
     });
 
-    const totalDuration = reducedMotion ? 100 : 3400;
+    const totalDuration = reducedMotion ? 100 : 3000;
     const startedAt = performance.now();
 
     function updateProgress(now) {
@@ -238,6 +297,7 @@ function beginRepair() {
         }
 
         const elapsed = now - startedAt;
+
         const percentage = Math.min(
             100,
             Math.round((elapsed / totalDuration) * 100)
@@ -247,19 +307,22 @@ function beginRepair() {
         progressPercent.textContent = percentage + "%";
 
         if (percentage < 100) {
-            repairTimer = setTimeout(() => {
+            const timer = setTimeout(() => {
                 requestAnimationFrame(updateProgress);
-            }, reducedMotion ? 0 : 35);
+            }, reducedMotion ? 0 : 30);
 
+            repairTimers.push(timer);
             return;
         }
 
         finishRepair();
     }
 
-    repairTimer = setTimeout(() => {
+    const timer = setTimeout(() => {
         requestAnimationFrame(updateProgress);
-    }, lineDelay * lines.length + 150);
+    }, lineDelay * lines.length + 100);
+
+    repairTimers.push(timer);
 }
 
 function finishRepair() {
@@ -274,9 +337,9 @@ function finishRepair() {
 }
 
 
-/* -----------------------------------------
+/* =========================================
    APOLOGY AND FINAL ROUND
-   ----------------------------------------- */
+   ========================================= */
 
 function openApology() {
     showScreen("apology");
@@ -287,9 +350,66 @@ function openFinalRound() {
 }
 
 
-/* -----------------------------------------
+/* =========================================
+   FLOATING HEART CELEBRATION
+   ========================================= */
+
+function celebrateHearts() {
+    if (reducedMotion) {
+        return;
+    }
+
+    const colors = [
+        "#ff4fa3",
+        "#ff9acb",
+        "#43e8ff",
+        "#b68aff"
+    ];
+
+    const heartCount = 18;
+
+    for (let i = 0; i < heartCount; i++) {
+        const heart = document.createElement("span");
+
+        heart.className = "celebration-heart";
+        heart.textContent = i % 3 === 0 ? "♥" : "✦";
+        heart.setAttribute("aria-hidden", "true");
+
+        const startX = 5 + Math.random() * 90;
+        const startY = 60 + Math.random() * 35;
+        const drift = (Math.random() - 0.5) * 150;
+        const rise = -(120 + Math.random() * 260);
+        const duration = 1.8 + Math.random() * 1.5;
+        const rotation = (Math.random() - 0.5) * 100;
+        const size = 14 + Math.random() * 18;
+
+        heart.style.setProperty("--start-x", startX + "vw");
+        heart.style.setProperty("--start-y", startY + "vh");
+        heart.style.setProperty("--drift-x", drift + "px");
+        heart.style.setProperty("--rise-y", rise + "px");
+        heart.style.setProperty("--heart-duration", duration + "s");
+        heart.style.setProperty("--rotation", rotation + "deg");
+        heart.style.setProperty("--heart-size", size + "px");
+        heart.style.setProperty(
+            "--heart-color",
+            colors[Math.floor(Math.random() * colors.length)]
+        );
+
+        document.body.appendChild(heart);
+
+        const removalTimer = setTimeout(() => {
+            heart.remove();
+        }, (duration + 0.3) * 1000);
+
+        // No timer cleanup is necessary: each heart removes itself.
+        void removalTimer;
+    }
+}
+
+
+/* =========================================
    ENDINGS
-   ----------------------------------------- */
+   ========================================= */
 
 function showEnding(type) {
     const endings = {
@@ -331,15 +451,13 @@ function showEnding(type) {
     endingMessage.textContent = selectedEnding.message;
 
     showScreen("ending");
+    celebrateHearts();
 }
 
 
-/* -----------------------------------------
+/* =========================================
    BUTTON HANDLER
-   ----------------------------------------- */
-
-// One event listener handles every game button,
-// including buttons created later during the boss fight.
+   ========================================= */
 
 document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-action]");
@@ -348,9 +466,9 @@ document.addEventListener("click", (event) => {
         return;
     }
 
-    // Ignore clicks on hidden screens.
-    if (!button.closest(".screen") ||
-        button.closest(".screen").hidden) {
+    const parentScreen = button.closest(".screen");
+
+    if (!parentScreen || parentScreen.hidden) {
         return;
     }
 
@@ -402,13 +520,13 @@ document.addEventListener("click", (event) => {
             break;
 
         default:
-            console.warn("Unknown action:", action);
+            console.warn("Unknown game action:", action);
     }
 });
 
 
-/* -----------------------------------------
-   INITIALISE
-   ----------------------------------------- */
+/* =========================================
+   START
+   ========================================= */
 
 showScreen("title");
